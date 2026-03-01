@@ -1,15 +1,82 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, RefreshCw, Loader2 } from 'lucide-react';
+import { getRandomCatUrls } from '../data/content';
+
+/** Fetches image URLs and converts to stable blob URLs so the same image is always shown until reload */
+async function urlsToBlobUrls(urls: string[]): Promise<string[]> {
+  const results = await Promise.all(
+    urls.map(async (url) => {
+      const res = await fetch(url, { mode: 'cors' });
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    })
+  );
+  return results;
+}
+
+interface CatCardsWithStateProps {
+  initialImages: string[];
+  isOpen: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+}
+
+export const CatCardsWithState: React.FC<CatCardsWithStateProps> = ({ initialImages, isOpen, onOpen, onClose }) => {
+  const [sourceUrls, setSourceUrls] = useState(initialImages);
+  const [displayUrls, setDisplayUrls] = useState<string[]>([]);
+  const [isPreloading, setIsPreloading] = useState(true);
+  const blobUrlsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state for async fetch
+    setIsPreloading(true);
+    const run = () => urlsToBlobUrls(sourceUrls)
+      .then((blobUrls) => {
+        if (cancelled) return;
+        blobUrlsRef.current.forEach(URL.revokeObjectURL);
+        blobUrlsRef.current = blobUrls;
+        setDisplayUrls(blobUrls);
+        setIsPreloading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDisplayUrls(sourceUrls);
+        setIsPreloading(false);
+      });
+    const id = setTimeout(run, 150);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+      blobUrlsRef.current.forEach(URL.revokeObjectURL);
+      blobUrlsRef.current = [];
+    };
+  }, [sourceUrls]);
+  const handleReload = () => setSourceUrls(getRandomCatUrls());
+
+  if (isPreloading || displayUrls.length === 0) return null;
+
+  return (
+    <CatCards
+      images={displayUrls}
+      isOpen={isOpen}
+      onOpen={onOpen}
+      onClose={onClose}
+      onReload={handleReload}
+    />
+  );
+};
 
 interface CatCardsProps {
   images: string[];
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
+  onReload?: () => void;
 }
 
-export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onClose }) => {
+export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onClose, onReload }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
 
@@ -17,7 +84,30 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
     setLoadedImages(prev => ({ ...prev, [src]: true }));
   };
 
+  const handleReload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLoadedImages({});
+    setCurrentIndex(0);
+    onReload?.();
+  };
+
   if (!images || images.length === 0) return null;
+
+  const renderImageWithLoader = (src: string) => (
+    <div className="relative w-full h-full">
+      {!loadedImages[src] && (
+        <div className="absolute inset-0 flex items-center justify-center bg-zinc-200/90">
+          <Loader2 className="w-12 h-12 text-zinc-500 animate-spin" strokeWidth={2} />
+        </div>
+      )}
+      <img 
+        src={src} 
+        alt=""
+        className={`w-full h-full object-cover pointer-events-none transition-opacity duration-300 ${loadedImages[src] ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => handleImageLoad(src)}
+      />
+    </div>
+  );
 
   const stackImages = images.slice(0, 3);
 
@@ -52,17 +142,7 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
                 whileHover={isLast ? { y: -15, rotate: (index - 1) * 8 + 5 } : {}}
                 transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               >
-                <div className="relative w-full h-full">
-                  {!loadedImages[src] && (
-                    <div className="absolute inset-0 animate-pulse bg-gray-300" />
-                  )}
-                  <img 
-                    src={src} 
-                    alt="cat stack" 
-                    className={`w-full h-full object-cover pointer-events-none transition-opacity duration-300 ${loadedImages[src] ? 'opacity-100' : 'opacity-0'}`}
-                    onLoad={() => handleImageLoad(src)}
-                  />
-                </div>
+                {renderImageWithLoader(src)}
               </motion.div>
             );
           })}
@@ -87,6 +167,16 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
             >
               <X size={24} />
             </button>
+
+            {onReload && (
+              <button 
+                onClick={handleReload}
+                className="absolute top-4 left-4 md:top-8 md:left-8 p-2 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors z-50"
+                title="Новая подборка котиков"
+              >
+                <RefreshCw size={24} />
+              </button>
+            )}
             
             <div className="relative w-full h-full flex items-center justify-center">
               {/* Desktop Nav - Left */}
@@ -107,17 +197,7 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
                     exit={{ opacity: 0, x: -50, scale: 0.9 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <div className="relative w-full h-full">
-                      {!loadedImages[images[currentIndex]] && (
-                        <div className="absolute inset-0 animate-pulse bg-gray-300" />
-                      )}
-                      <img 
-                        src={images[currentIndex]} 
-                        alt={`cat ${currentIndex}`} 
-                        className={`w-full h-full object-cover pointer-events-none transition-opacity duration-300 ${loadedImages[images[currentIndex]] ? 'opacity-100' : 'opacity-0'}`}
-                        onLoad={() => handleImageLoad(images[currentIndex])}
-                      />
-                    </div>
+                    {renderImageWithLoader(images[currentIndex])}
                   </motion.div>
                 </AnimatePresence>
               </div>

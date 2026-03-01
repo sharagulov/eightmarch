@@ -1,5 +1,6 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { backgroundPalettes } from '../data/content';
 
 declare global {
   interface Window {
@@ -8,40 +9,49 @@ declare global {
   }
 }
 
-interface BackgroundVideoProps {
-  videoUrl?: string;
-  forcePlay?: boolean;
-  onReady?: () => void;
-}
+const defaultPalette = backgroundPalettes.masha;
 
-export const BackgroundVideo: React.FC<BackgroundVideoProps> = ({ onReady }) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [vantaEffect, setVantaEffect] = useState<any>(null);
+export const BackgroundVideo: React.FC<{ slug?: string }> = ({ slug = 'masha' }) => {
   const vantaRef = useRef<HTMLDivElement>(null);
+  const effectRef = useRef<{ destroy: () => void } | null>(null);
+  const palette = backgroundPalettes[slug] ?? defaultPalette;
 
   useEffect(() => {
-    if (!vantaEffect && window.VANTA) {
-      setVantaEffect(window.VANTA.FOG({
-        el: vantaRef.current,
-        mouseControls: true,
-        touchControls: true,
-        gyroControls: false,
-        minHeight: 200.00,
-        minWidth: 200.00,
-        highlightColor: 0xf0d7a5,
-        midtoneColor: 0xffb4a8,
-        lowlightColor: 0xffb3a3,
-        baseColor: 0xffebeb,
-        blurFactor: 0.6,
-        zoom: 1,
-        speed: 1.50
-      }));
-      onReady?.();
+    const init = () => {
+      if (typeof window !== 'undefined' && window.VANTA && vantaRef.current) {
+        effectRef.current?.destroy();
+        effectRef.current = window.VANTA.FOG({
+          el: vantaRef.current,
+          mouseControls: true,
+          touchControls: true,
+          gyroControls: false,
+          minHeight: 200.00,
+          minWidth: 200.00,
+          highlightColor: palette.highlight,
+          midtoneColor: palette.midtone,
+          lowlightColor: palette.lowlight,
+          baseColor: palette.base,
+          blurFactor: 0.5,
+          zoom: 1,
+          speed: 0.8
+        });
+        return true;
+      }
+      return false;
+    };
+    if (!init()) {
+      const id = setInterval(() => init() && clearInterval(id), 100);
+      return () => {
+        clearInterval(id);
+        effectRef.current?.destroy();
+        effectRef.current = null;
+      };
     }
     return () => {
-      if (vantaEffect) vantaEffect.destroy();
+      effectRef.current?.destroy();
+      effectRef.current = null;
     };
-  }, [vantaEffect, onReady]);
+  }, [slug, palette.highlight, palette.midtone, palette.lowlight, palette.base]);
 
   return (
     <motion.div
@@ -51,7 +61,8 @@ export const BackgroundVideo: React.FC<BackgroundVideoProps> = ({ onReady }) => 
       transition={{ duration: 1.5 }}
       className="absolute inset-0 w-full h-full -z-10"
     >
-      <div ref={vantaRef} className="w-full h-full" />
+      <div className={`absolute inset-0 bg-gradient-to-br ${palette.gradient}`} />
+      <div ref={vantaRef} className="absolute inset-0 w-full h-full" />
       {/* Light gradient overlay (0.5x) */}
       <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/45 via-zinc-950/20 to-transparent pointer-events-none" />
     </motion.div>

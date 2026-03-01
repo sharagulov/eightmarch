@@ -1,21 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import type { GirlData } from '../data/content';
 import { BackgroundVideo } from './BackgroundVideo';
 import { PoemOverlay } from './PoemOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CatCards } from './CatCards';
+import { CatCardsWithState } from './CatCards';
 
 interface PlayerUIProps {
   girl: GirlData;
-  prevGirlSlug: string;
-  nextGirlSlug: string;
-  onBackgroundReady?: () => void;
+  prevGirlSlug?: string;
+  nextGirlSlug?: string;
 }
 
-export const PlayerUI: React.FC<PlayerUIProps> = ({ girl, prevGirlSlug, nextGirlSlug, onBackgroundReady }) => {
-  const navigate = useNavigate();
+export const PlayerUI: React.FC<PlayerUIProps> = ({ girl }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [progress, setProgress] = useState(0);
   const [isCatsOpen, setIsCatsOpen] = useState(false);
@@ -37,8 +34,6 @@ export const PlayerUI: React.FC<PlayerUIProps> = ({ girl, prevGirlSlug, nextGirl
 
   const togglePlay = () => setIsPlaying(!isPlaying);
 
-  const handleNext = () => navigate(`/${nextGirlSlug}`);
-  const handlePrev = () => navigate(`/${prevGirlSlug}`);
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!progressRef.current) return;
@@ -66,7 +61,7 @@ export const PlayerUI: React.FC<PlayerUIProps> = ({ girl, prevGirlSlug, nextGirl
         exit={{ opacity: 0, scale: 1.02 }}
         transition={{ duration: 0.5 }}
       >
-        <BackgroundVideo videoUrl={girl.videoUrl} forcePlay={isPlaying} onReady={onBackgroundReady} />
+        <BackgroundVideo slug={girl.slug} />
         
         {/* Main Player Container (Glassmorphism for all screens) */}
         <div className="relative w-full max-w-md flex justify-center">
@@ -122,8 +117,7 @@ export const PlayerUI: React.FC<PlayerUIProps> = ({ girl, prevGirlSlug, nextGirl
               
               <div className="flex items-center gap-6 md:gap-8">
                 <button 
-                  onClick={handlePrev}
-                  className="text-white hover:text-gray-300 transition-colors"
+                  className="text-white hover:text-gray-300 transition-colors cursor-default"
                 >
                   <SkipBack size={32} fill="currentColor" />
                 </button>
@@ -140,8 +134,7 @@ export const PlayerUI: React.FC<PlayerUIProps> = ({ girl, prevGirlSlug, nextGirl
                 </button>
                 
                 <button 
-                  onClick={handleNext}
-                  className="text-white hover:text-gray-300 transition-colors"
+                  className="text-white hover:text-gray-300 transition-colors cursor-default"
                 >
                   <SkipForward size={32} fill="currentColor" />
                 </button>
@@ -153,11 +146,12 @@ export const PlayerUI: React.FC<PlayerUIProps> = ({ girl, prevGirlSlug, nextGirl
             </div>
           </motion.div>
 
-          <CatCards 
-            images={girl.catImages} 
+          <CatCardsWithState 
+            key={girl.slug}
+            initialImages={girl.catImages}
             isOpen={isCatsOpen} 
             onOpen={() => setIsCatsOpen(true)} 
-            onClose={() => setIsCatsOpen(false)} 
+            onClose={() => setIsCatsOpen(false)}
           />
         </div>
       </motion.div>
