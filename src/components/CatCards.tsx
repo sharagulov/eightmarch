@@ -26,12 +26,18 @@ export const CatCardsWithState: React.FC<CatCardsWithStateProps> = ({ initialIma
   const [sourceUrls, setSourceUrls] = useState(initialImages);
   const [displayUrls, setDisplayUrls] = useState<string[]>([]);
   const [isPreloading, setIsPreloading] = useState(true);
+  const [isReloading, setIsReloading] = useState(false);
   const blobUrlsRef = useRef<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading state for async fetch
-    setIsPreloading(true);
+    const isReload = displayUrls.length > 0;
+    if (!isReload) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load only
+      setIsPreloading(true);
+    } else {
+      setIsReloading(true);
+    }
     const run = () => urlsToBlobUrls(sourceUrls)
       .then((blobUrls) => {
         if (cancelled) return;
@@ -39,23 +45,28 @@ export const CatCardsWithState: React.FC<CatCardsWithStateProps> = ({ initialIma
         blobUrlsRef.current = blobUrls;
         setDisplayUrls(blobUrls);
         setIsPreloading(false);
+        setIsReloading(false);
       })
       .catch(() => {
         if (cancelled) return;
         setDisplayUrls(sourceUrls);
         setIsPreloading(false);
+        setIsReloading(false);
       });
-    const id = setTimeout(run, 150);
+    const id = setTimeout(run, isReload ? 0 : 150);
     return () => {
       cancelled = true;
       clearTimeout(id);
-      blobUrlsRef.current.forEach(URL.revokeObjectURL);
-      blobUrlsRef.current = [];
     };
   }, [sourceUrls]);
+
+  useEffect(() => () => {
+    blobUrlsRef.current.forEach(URL.revokeObjectURL);
+    blobUrlsRef.current = [];
+  }, []);
   const handleReload = () => setSourceUrls(getRandomCatUrls());
 
-  if (isPreloading || displayUrls.length === 0) return null;
+  if (isPreloading && displayUrls.length === 0) return null;
 
   return (
     <CatCards
@@ -64,6 +75,7 @@ export const CatCardsWithState: React.FC<CatCardsWithStateProps> = ({ initialIma
       onOpen={onOpen}
       onClose={onClose}
       onReload={handleReload}
+      isReloading={isReloading}
     />
   );
 };
@@ -74,11 +86,18 @@ interface CatCardsProps {
   onOpen: () => void;
   onClose: () => void;
   onReload?: () => void;
+  isReloading?: boolean;
 }
 
-export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onClose, onReload }) => {
+export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onClose, onReload, isReloading }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (images && images.length > 0) {
+      setCurrentIndex(0);
+    }
+  }, [images]);
 
   const handleImageLoad = (src: string) => {
     setLoadedImages(prev => ({ ...prev, [src]: true }));
@@ -86,8 +105,6 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
 
   const handleReload = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setLoadedImages({});
-    setCurrentIndex(0);
     onReload?.();
   };
 
@@ -96,8 +113,8 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
   const renderImageWithLoader = (src: string) => (
     <div className="relative w-full h-full">
       {!loadedImages[src] && (
-        <div className="absolute inset-0 flex items-center justify-center bg-zinc-200/90">
-          <Loader2 className="w-12 h-12 text-zinc-500 animate-spin" strokeWidth={2} />
+        <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm">
+          <Loader2 className="w-10 h-10 text-pink-400 animate-spin" strokeWidth={2.5} />
         </div>
       )}
       <img 
@@ -134,7 +151,7 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
             return (
               <motion.div
                 key={index}
-                className="absolute top-0 left-0 w-full h-full rounded-2xl border-4 border-white shadow-xl overflow-hidden bg-gray-200"
+                className="absolute top-0 left-0 w-full h-full rounded-2xl border-4 border-white shadow-xl overflow-hidden bg-white/30 backdrop-blur-md"
                 style={{
                   rotate: (index - 1) * 8,
                   zIndex: index,
@@ -171,10 +188,11 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
             {onReload && (
               <button 
                 onClick={handleReload}
-                className="absolute top-4 left-4 md:top-8 md:left-8 p-2 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors z-50"
+                disabled={isReloading}
+                className="absolute top-4 left-4 md:top-8 md:left-8 p-2 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors z-50 disabled:opacity-70 disabled:cursor-wait"
                 title="Новая подборка котиков"
               >
-                <RefreshCw size={24} />
+                <RefreshCw size={24} className={isReloading ? 'animate-spin' : ''} />
               </button>
             )}
             
@@ -191,7 +209,7 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentIndex}
-                    className="absolute inset-0 rounded-3xl border-4 border-white shadow-2xl overflow-hidden bg-gray-200"
+                    className="absolute inset-0 rounded-3xl border-4 border-white shadow-2xl overflow-hidden bg-white/30 backdrop-blur-md"
                     initial={{ opacity: 0, x: 50, scale: 0.9 }}
                     animate={{ opacity: 1, x: 0, scale: 1 }}
                     exit={{ opacity: 0, x: -50, scale: 0.9 }}
@@ -199,6 +217,28 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
                   >
                     {renderImageWithLoader(images[currentIndex])}
                   </motion.div>
+                </AnimatePresence>
+                <AnimatePresence>
+                  {isReloading && (
+                    <motion.div
+                      key="reload-overlay"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute inset-0 rounded-3xl bg-white/20 backdrop-blur-[2px] flex items-center justify-center z-20"
+                    >
+                      <motion.div 
+                        initial={{ scale: 0.9, y: 10 }}
+                        animate={{ scale: 1, y: 0 }}
+                        exit={{ scale: 0.9, y: 10 }}
+                        className="bg-white/80 backdrop-blur-md px-6 py-4 rounded-2xl shadow-xl border border-white/60 flex flex-col items-center gap-3"
+                      >
+                        <Loader2 className="w-8 h-8 text-pink-500 animate-spin" strokeWidth={2.5} />
+                        <span className="text-pink-600 font-medium whitespace-nowrap">Новые котики...</span>
+                      </motion.div>
+                    </motion.div>
+                  )}
                 </AnimatePresence>
               </div>
 
