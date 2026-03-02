@@ -1,13 +1,8 @@
 import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import * as THREE from 'three';
+import FOG from 'vanta/dist/vanta.fog.min';
 import { backgroundPalettes } from '../data/content';
-
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    VANTA: any;
-  }
-}
 
 const defaultPalette = backgroundPalettes.masha;
 
@@ -17,35 +12,24 @@ export const BackgroundVideo: React.FC<{ slug?: string }> = ({ slug = 'masha' })
   const palette = backgroundPalettes[slug] ?? defaultPalette;
 
   useEffect(() => {
-    const init = () => {
-      if (typeof window !== 'undefined' && window.VANTA && vantaRef.current) {
-        effectRef.current?.destroy();
-        effectRef.current = window.VANTA.FOG({
-          el: vantaRef.current,
-          mouseControls: true,
-          touchControls: true,
-          gyroControls: false,
-          minHeight: 200.00,
-          minWidth: 200.00,
-          highlightColor: palette.highlight,
-          midtoneColor: palette.midtone,
-          lowlightColor: palette.lowlight,
-          baseColor: palette.base,
-          blurFactor: 0.5,
-          zoom: 1,
-          speed: 0.8
-        });
-        return true;
-      }
-      return false;
-    };
-    if (!init()) {
-      const id = setInterval(() => init() && clearInterval(id), 100);
-      return () => {
-        clearInterval(id);
-        effectRef.current?.destroy();
-        effectRef.current = null;
-      };
+    if (vantaRef.current) {
+      effectRef.current?.destroy();
+      effectRef.current = FOG({
+        THREE,
+        el: vantaRef.current,
+        mouseControls: true,
+        touchControls: true,
+        gyroControls: false,
+        minHeight: 200.00,
+        minWidth: 200.00,
+        highlightColor: palette.highlight,
+        midtoneColor: palette.midtone,
+        lowlightColor: palette.lowlight,
+        baseColor: palette.base,
+        blurFactor: 0.5,
+        zoom: 1,
+        speed: 0.8
+      });
     }
     return () => {
       effectRef.current?.destroy();

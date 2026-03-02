@@ -56,8 +56,8 @@ export const PlayerUI: React.FC<PlayerUIProps> = ({ girl }) => {
       <motion.div 
         key={girl.slug}
         className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 relative z-0"
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         exit={{ opacity: 0, scale: 1.02 }}
         transition={{ duration: 0.5 }}
       >
@@ -66,7 +66,7 @@ export const PlayerUI: React.FC<PlayerUIProps> = ({ girl }) => {
         {/* Main Player Container (Glassmorphism for all screens) */}
         <div className="relative w-full max-w-md flex justify-center z-0">
           <motion.div 
-            className="w-full flex flex-col justify-center bg-black/20 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl"
+            className="w-full flex flex-col justify-center bg-black/20 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl [transform:translateZ(0)] [isolation:isolate]"
             animate={{
               scale: isCatsOpen ? 0.85 : 1,
               opacity: isCatsOpen ? 0.5 : 1,
