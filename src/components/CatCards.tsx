@@ -33,7 +33,7 @@ export const CatCardsWithState: React.FC<CatCardsWithStateProps> = ({ initialIma
     let cancelled = false;
     const isReload = displayUrls.length > 0;
     if (!isReload) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load only
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsPreloading(true);
     } else {
       setIsReloading(true);
@@ -58,7 +58,7 @@ export const CatCardsWithState: React.FC<CatCardsWithStateProps> = ({ initialIma
       cancelled = true;
       clearTimeout(id);
     };
-  }, [sourceUrls]);
+  }, [sourceUrls, displayUrls.length]);
 
   useEffect(() => () => {
     blobUrlsRef.current.forEach(URL.revokeObjectURL);
@@ -95,6 +95,7 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
 
   useEffect(() => {
     if (images && images.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentIndex(0);
     }
   }, [images]);
@@ -143,7 +144,7 @@ export const CatCards: React.FC<CatCardsProps> = ({ images, isOpen, onOpen, onCl
       {/* Closed State (Stack) */}
       {!isOpen && (
         <motion.div 
-          className="absolute -top-10 right-8 md:top-1/4 md:-right-12 w-32 h-40 md:w-40 md:h-48 cursor-pointer z-[-1] opacity-50 hover:opacity-100 transition-opacity duration-300"
+          className="absolute -top-10 right-8 md:top-1/4 md:-right-12 w-32 h-40 md:w-40 md:h-48 cursor-pointer z-0 opacity-50 hover:opacity-100 transition-opacity duration-300"
           onClick={onOpen}
         >
           {stackImages.map((src, index) => {

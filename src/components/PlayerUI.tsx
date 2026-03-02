@@ -64,7 +64,7 @@ export const PlayerUI: React.FC<PlayerUIProps> = ({ girl }) => {
         <BackgroundVideo slug={girl.slug} />
         
         {/* Main Player Container (Glassmorphism for all screens) */}
-        <div className="relative w-full max-w-md flex justify-center">
+        <div className="relative w-full max-w-md flex justify-center z-0">
           <motion.div 
             className="w-full flex flex-col justify-center bg-black/20 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl"
             animate={{
